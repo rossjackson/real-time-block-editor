@@ -11,33 +11,33 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
   output: {
     filename: "bundle.js",
     path: distRoot,
-    clean: true
+    clean: true,
   },
   resolve: {
-    extensions: [".ts", ".tsx", ".js"]
+    extensions: [".ts", ".tsx", ".js"],
   },
   module: {
     rules: [
       {
         test: /\.tsx?$/,
         use: "ts-loader",
-        exclude: /node_modules/
-      }
-    ]
+        exclude: /node_modules/,
+      },
+    ],
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: "./src/index.html"
-    })
+      template: "./src/index.html",
+    }),
   ],
   devServer: {
     port: 3000,
     open: true,
     hot: true,
     static: {
-      directory: distRoot
-    }
-  }
+      directory: distRoot,
+    },
+  },
 };
 
 export default config;
