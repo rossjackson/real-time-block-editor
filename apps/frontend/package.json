@@ -1,0 +1,10 @@
+{
+  "name": "@real-time-block-editor/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "webpack --config webpack.config.ts --mode production",
+    "serve": "webpack serve --config webpack.config.ts --mode development",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
