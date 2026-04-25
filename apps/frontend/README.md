@@ -1,0 +1,32 @@
+# Frontend
+
+Webpack + React client for the real-time block editor. `src/useYDocInit.ts` creates the shared Yjs `Doc`, websocket `WebsocketProvider`, and `blocks` array at module scope (so hot reload does not spawn extra connections), and exports `useYDocInit()` to subscribe and mirror doc + connection status into React state. `src/App.tsx` is the main UI.
+
+`src/mockAI.ts` contains the `simulateAI` helper used by the demo button in `App.tsx`. It exists to keep mock/demo token streaming separate from UI rendering logic so it is easier to replace with a real backend AI stream without mixing transport/mock concerns into the component.
+
+## Why sync Yjs to React (`syncToReact`)
+
+The collaborative document lives in **mutable Yjs types** (`Y.Array`, `Y.Map`, `Y.Text`) outside React’s state model. When the doc changes—local actions, another tab, or remote sync over the websocket—those updates happen on the Yjs objects only. React does **not** re-render unless something calls `setState` (or similar).
+
+`syncToReact` is the bridge:
+
+1. **`observeDeep`** runs it whenever the shared structure (including nested `Y.Text`) changes.
+2. Inside, **`setBlocks`** schedules a re-render so the UI stays in sync with the document.
+
+The function also **converts Yjs → plain data** for JSX: `Y.Text` is not a string, so we use `.toString()` (or a proper editor binding later). The UI maps over `BlockData[]`, not `Y.Map` instances.
+
+**Source of truth** remains Yjs (and the provider). React `blocks` state is a **derived snapshot** for rendering—similar to subscribing to an external store and copying a view model into `useState`.
+
+If you later use an editor that binds directly to `Y.Text` (e.g. ProseMirror/Lexical + Yjs), that layer replaces “string in a `div`” but you still need **some** path from Yjs updates to what gets painted on screen.
+
+## Why `addBlock` updates `sharedBlocks` (not React state)
+
+`addBlock` writes to `sharedBlocks` because that `Y.Array` is the collaborative source of truth shared across tabs/clients. If we only called React state setters in `App.tsx`, that change would be local UI state and would not become a CRDT operation broadcast through Yjs.
+
+Flow:
+
+1. `addBlock` creates Yjs types (`Y.Map`, `Y.Text`) and pushes them into `sharedBlocks`.
+2. Yjs emits change events (`observeDeep`) for local and remote edits.
+3. `syncToReact` responds to those events and calls `setBlocks` with a plain-data snapshot for rendering.
+
+So React state is intentionally **derived** from Yjs, while all real mutations happen on shared Yjs structures. This keeps one write path and avoids state divergence between React and the collaborative document.

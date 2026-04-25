@@ -4,5 +4,5 @@
     "outDir": "../../dist/apps/backend",
     "rootDir": "."
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts"]
 }
