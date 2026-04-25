@@ -30,3 +30,29 @@ Flow:
 3. `syncToReact` responds to those events and calls `setBlocks` with a plain-data snapshot for rendering.
 
 So React state is intentionally **derived** from Yjs, while all real mutations happen on shared Yjs structures. This keeps one write path and avoids state divergence between React and the collaborative document.
+
+## Block editing and AI streaming behavior
+
+The block body in `App.tsx` uses a `contentEditable` `div` and pushes user input back into shared Yjs `Y.Text` so edits are visible across tabs/browsers in the same room.
+
+### Editable block sync
+
+1. Typing in a block fires `onInput`.
+2. `onInput` calls `updateBlockContent`.
+3. `updateBlockContent` rewrites the block's shared `Y.Text` content.
+4. Yjs emits updates and `syncToReact` rehydrates `blocks` for render in all connected clients.
+
+### AI stream lock during simulation
+
+When `✨ Simulate AI Stream` is clicked for a block:
+
+1. That block ID is added to an `aiStreamingBlocks` set in React state.
+2. The block's `contentEditable` is set to `false` for that block only.
+3. The AI stream appends token-by-token into the shared `Y.Text`.
+4. On stream completion, the block ID is removed from the set and editing is enabled again.
+
+This prevents local typing from competing with the simulated AI writes for the same block while the stream is active.
+
+### Current caveat
+
+To avoid caret jumps in `contentEditable`, focused blocks skip DOM text replacement from incoming sync updates. During local typing, remote updates for that same focused block may not be painted until focus leaves the block.

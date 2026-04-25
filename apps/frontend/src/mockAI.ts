@@ -6,15 +6,18 @@ const STREAM_INTERVAL_MS = 50
 
 export const simulateAI = (
   sharedBlocks: Y.Array<Y.Map<unknown>>,
-  blockIndex: number
+  blockIndex: number,
+  onDone?: () => void
 ) => {
   const targetBlock = sharedBlocks.get(blockIndex)
   if (!targetBlock) {
+    onDone?.()
     return
   }
 
   const yText = targetBlock.get('content')
   if (!(yText instanceof Y.Text)) {
+    onDone?.()
     return
   }
 
@@ -29,5 +32,6 @@ export const simulateAI = (
     }
 
     clearInterval(interval)
+    onDone?.()
   }, STREAM_INTERVAL_MS)
 }

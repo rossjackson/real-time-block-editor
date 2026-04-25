@@ -38,17 +38,16 @@ export const useYDocInit = (): {
   const [blocks, setBlocks] = useState<BlockData[]>([])
   const [status, setStatus] = useState('Connecting...')
 
-  const onStatus = (event: { status: string }) => {
-    setStatus(event.status === 'connected' ? '🟢 Connected' : '🔴 Disconnected')
-  }
-
-  provider.on('status', onStatus)
-
   useEffect(() => {
+    const onStatus = (event: { status: string }) => {
+      setStatus(event.status === 'connected' ? '🟢 Connected' : '🔴 Disconnected')
+    }
+
     const syncToReact = () => {
       setBlocks(blocksFromYArray())
     }
 
+    provider.on('status', onStatus)
     sharedBlocks.observeDeep(syncToReact)
     syncToReact()
 
