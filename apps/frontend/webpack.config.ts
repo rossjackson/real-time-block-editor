@@ -10,45 +10,60 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const appRoot = process.cwd()
 const distRoot = path.resolve(appRoot, '../../dist/apps/frontend')
 
-const config: Configuration & { devServer?: DevServerConfiguration } = {
-  entry: './src/main.tsx',
-  output: {
-    filename: 'bundle.js',
-    path: distRoot,
-    clean: true,
-  },
-  resolve: {
-    extensions: ['.ts', '.tsx', '.js'],
-  },
-  module: {
-    rules: [
-      {
-        test: /\.tsx?$/,
-        use: 'ts-loader',
-        exclude: /node_modules/,
-      },
-      {
-        test: /\.css$/i,
-        use: ['style-loader', 'css-loader'],
-      },
-    ],
-  },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: './src/index.html',
-    }),
-    new Dotenv({
-      path: path.resolve(__dirname, '.env'),
-    }),
-  ],
-  devServer: {
-    port: 3000,
-    open: true,
-    hot: true,
-    static: {
-      directory: distRoot,
+const makeConfig = (
+  _env: unknown,
+  argv: { mode?: 'development' | 'production' | 'none' },
+): Configuration & { devServer?: DevServerConfiguration } => {
+  const isDevelopment = argv.mode === 'development'
+
+  return {
+    entry: './src/main.tsx',
+    devtool: isDevelopment ? 'eval-source-map' : false,
+    output: {
+      filename: 'bundle.js',
+      path: distRoot,
+      clean: true,
     },
-  },
+    resolve: {
+      extensions: ['.ts', '.tsx', '.js'],
+    },
+    module: {
+      rules: [
+        {
+          test: /\.tsx?$/,
+          use: {
+            loader: 'ts-loader',
+            options: {
+              compilerOptions: {
+                sourceMap: isDevelopment,
+              },
+            },
+          },
+          exclude: /node_modules/,
+        },
+        {
+          test: /\.css$/i,
+          use: ['style-loader', 'css-loader'],
+        },
+      ],
+    },
+    plugins: [
+      new HtmlWebpackPlugin({
+        template: './src/index.html',
+      }),
+      new Dotenv({
+        path: path.resolve(__dirname, '.env'),
+      }),
+    ],
+    devServer: {
+      port: 3000,
+      open: true,
+      hot: true,
+      static: {
+        directory: distRoot,
+      },
+    },
+  }
 }
 
-export default config
+export default makeConfig

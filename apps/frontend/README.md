@@ -1,6 +1,6 @@
 # Frontend
 
-Webpack + React client for the real-time block editor. `src/useYDocInit.ts` creates the shared Yjs `Doc`, websocket `WebsocketProvider`, and `blocks` array at module scope (so hot reload does not spawn extra connections), and exports `useYDocInit()` to subscribe and mirror doc + connection status into React state. `src/App.tsx` is the main UI.
+Webpack + React client for the real-time block editor. `src/collaborationProvider.ts` owns shared Yjs singletons (`ydoc`, websocket `provider`, `sharedBlocks`) at module scope so hot reload does not spawn extra connections. `src/useSyncYDocToReact.ts` mirrors shared block content into React state, and `src/App.tsx` is the main UI.
 
 `src/mockAI.ts` contains the `simulateAI` helper used by the demo button in `App.tsx`. It exists to keep mock/demo token streaming separate from UI rendering logic so it is easier to replace with a real backend AI stream without mixing transport/mock concerns into the component.
 
@@ -56,3 +56,33 @@ This prevents local typing from competing with the simulated AI writes for the s
 ### Current caveat
 
 To avoid caret jumps in `contentEditable`, focused blocks skip DOM text replacement from incoming sync updates. During local typing, remote updates for that same focused block may not be painted until focus leaves the block.
+
+## Awareness, cursors, and active collaborators
+
+This app uses `y-websocket` awareness (presence) to show who is online and where they are typing.
+
+### Where it lives
+
+- `src/collaborationProvider.ts`
+  - Initializes local awareness state once at module load (`user` and `cursor: null`).
+  - Exposes singleton `provider` used by awareness hooks.
+- `src/useCollaborationAwareness.ts`
+  - Subscribes to `provider.awareness` `change` and `update` events.
+  - Builds `remoteCursorsByBlock` for rendering cursor flags.
+  - Computes `activeCollaborators` as remote clients that have `user` presence (cursor is optional).
+  - Exposes `updateLocalCursor(blockId, cursor)` so editors can publish local caret movement.
+- `src/BlockContent.tsx`
+  - Captures caret position from contentEditable selection and publishes it through `onCursorChange`.
+  - Handles collapsed caret ranges by inserting a temporary zero-width marker to measure stable coordinates.
+- `src/UserCursor.tsx`
+  - Renders the remote cursor line + colored user badge.
+- `src/App.tsx`
+  - Wires everything together: status badge, collaborator count, block editor, and cursor overlay layer.
+
+### Behavior details
+
+1. On load, each client publishes a local awareness `user` object (`name`, `color`).
+2. While focused in a block, caret movement updates local `cursor` (`blockId`, `x`, `y`).
+3. Other clients receive awareness updates and group remote cursors by `blockId`.
+4. The UI renders cursor flags in the matching block and shows active collaborator count in the header.
+5. On blur/unmount, local `cursor` is set to `null` so stale caret markers disappear.

@@ -1,19 +1,8 @@
 import { useEffect, useState } from 'react'
-import { WebsocketProvider } from 'y-websocket'
 import { Doc, Map } from 'yjs'
+import { WebsocketProvider } from 'y-websocket'
 
-import { processEnv } from './config'
-
-// Module-level so hot reload does not create extra websocket connections.
-export const ydoc = new Doc()
-
-export const provider = new WebsocketProvider(
-  processEnv.backendWSURL,
-  processEnv.wsRoomName,
-  ydoc
-)
-
-export const sharedBlocks = ydoc.getArray<Map<unknown>>('blocks')
+import { localUser, provider, sharedBlocks, ydoc } from './collaborationProvider'
 
 export interface BlockData {
   id: string
@@ -28,34 +17,27 @@ const blocksFromYArray = (): BlockData[] =>
     content: yMap.get('content')?.toString() || '',
   }))
 
-export const useYDocInit = (): {
+export const useSyncYDocToReact = (): {
   blocks: BlockData[]
-  status: string
   ydoc: Doc
   provider: WebsocketProvider
   sharedBlocks: typeof sharedBlocks
+  localUser: typeof localUser
 } => {
   const [blocks, setBlocks] = useState<BlockData[]>([])
-  const [status, setStatus] = useState('Connecting...')
 
   useEffect(() => {
-    const onStatus = (event: { status: string }) => {
-      setStatus(event.status === 'connected' ? '🟢 Connected' : '🔴 Disconnected')
-    }
-
     const syncToReact = () => {
       setBlocks(blocksFromYArray())
     }
 
-    provider.on('status', onStatus)
     sharedBlocks.observeDeep(syncToReact)
     syncToReact()
 
     return () => {
-      provider.off('status', onStatus)
       sharedBlocks.unobserveDeep(syncToReact)
     }
   }, [])
 
-  return { blocks, status, ydoc, provider, sharedBlocks }
+  return { blocks, ydoc, provider, sharedBlocks, localUser }
 }

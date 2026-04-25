@@ -1,51 +1,23 @@
-import { InputEvent, useLayoutEffect, useRef, useState } from 'react'
+import { InputEvent, useState } from 'react'
 import * as Y from 'yjs'
 import './App.css'
+import { BlockContent } from './BlockContent'
 import { simulateAI } from './mockAI'
-import { useYDocInit } from './useYDocInit'
-
-interface BlockContentProps {
-  value: string
-  isReadOnly: boolean
-  onInput: (event: InputEvent<HTMLDivElement>) => void
-}
-
-const BlockContent = ({ value, isReadOnly, onInput }: BlockContentProps) => {
-  const contentRef = useRef<HTMLDivElement | null>(null)
-
-  useLayoutEffect(() => {
-    const element = contentRef.current
-    if (!element) {
-      return
-    }
-
-    // Avoid resetting text while the user is actively typing,
-    // which causes the caret to jump to the start.
-    if (document.activeElement === element) {
-      return
-    }
-
-    if (element.textContent !== value) {
-      element.textContent = value
-    }
-  }, [value])
-
-  return (
-    <div
-      ref={contentRef}
-      className="block-content"
-      contentEditable={!isReadOnly}
-      suppressContentEditableWarning
-      onInput={onInput}
-    />
-  )
-}
+import { UserCursor } from './UserCursor'
+import {
+  useCollaborationAwareness,
+} from './useCollaborationAwareness'
+import { useConnectionStatus } from './useConnectionStatus'
+import { useSyncYDocToReact } from './useSyncYDocToReact'
 
 const App = () => {
-  const { blocks, status, sharedBlocks } = useYDocInit()
+  const { blocks, provider, sharedBlocks } = useSyncYDocToReact()
+  const connectionStatus = useConnectionStatus(provider)
   const [aiStreamingBlocks, setAiStreamingBlocks] = useState<Set<string>>(
     new Set()
   )
+  const { remoteCursorsByBlock, activeCollaborators, updateLocalCursor } =
+    useCollaborationAwareness(provider)
 
   const addBlock = () => {
     const newBlock = new Y.Map()
@@ -95,7 +67,10 @@ const App = () => {
     <div className="app">
       <header className="app-header">
         <h2>Real Time Block Editor CRDT</h2>
-        <span className="status-badge">{status}</span>
+        <div className="header-statuses">
+          <span className="status-badge">{connectionStatus}</span>
+          <span className="status-badge">👥 {activeCollaborators} active</span>
+        </div>
       </header>
 
       <div className="actions">
@@ -116,11 +91,18 @@ const App = () => {
           <div key={block.id} className="block-card">
             <div className="block-id">Block ID: {block.id}</div>
 
-            <BlockContent
-              value={block.content}
-              isReadOnly={aiStreamingBlocks.has(block.id)}
-              onInput={(event) => onBlockInput(index, event)}
-            />
+            <div className="block-editor-shell">
+              <BlockContent
+                blockId={block.id}
+                value={block.content}
+                isReadOnly={aiStreamingBlocks.has(block.id)}
+                onInput={(event) => onBlockInput(index, event)}
+                onCursorChange={updateLocalCursor}
+              />
+              {(remoteCursorsByBlock[block.id] ?? []).map((remoteCursor) => (
+                <UserCursor key={remoteCursor.clientId} cursor={remoteCursor} />
+              ))}
+            </div>
 
             <button
               onClick={() => triggerAISimulation(block.id, index)}
