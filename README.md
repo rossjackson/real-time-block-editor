@@ -2,6 +2,9 @@
 
 Real time block editor where two browser windows can edit different blocks, add new blocks, and simulate an "AI" typing into a block simultaneously.
 
+## Sample
+<img width="1713" height="1018" alt="crdtsample" src="https://github.com/user-attachments/assets/b2c1bcc4-8a40-4db1-b922-a7709cca9838" />
+
 ## Docs
 
 - [Frontend](apps/frontend/README.md) — architecture notes, including why Yjs state is synced into React state.
